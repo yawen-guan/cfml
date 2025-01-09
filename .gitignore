@@ -62,3 +62,6 @@ dune-workspace.versions
 *.install
 _build
 README.html
+
+# direnv
+.direnv
