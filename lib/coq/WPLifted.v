@@ -478,7 +478,8 @@ Fixpoint Wpgen (E:ctx) (t:trm) : Formula :=
        Wptag (Wpgen_if b0 (aux t1) (aux t2)))
   | trm_let z t1 t2 =>
      match z with
-     | bind_anon => Wptag (Wpgen_seq_cont (aux t1) (aux t2))
+     (* | bind_anon => Wptag (Wpgen_seq_cont (aux t1) (aux t2)) *)
+     | bind_anon => Wptag (Wpgen_seq (aux t1) (aux t2))
      | bind_var x => Wptag (Wpgen_let (aux t1) (fun A (EA:Enc A) (X:A) =>
                          Wpgen (Ctx.add x (enc X) E) t2))
      end
@@ -686,6 +687,21 @@ Proof using.
   remove_MkStruct. simpl. applys Triple_seq.
   { rewrite Triple_eq_himpl_Wp. applys* M1. }
   { rewrite Triple_eq_himpl_Wp. applys* M2. }
+Qed.
+
+(** Note: [Wpgen_seq_cont] is stronger than [Wpgen_seq], but [Wpgen_seq] is
+    strong enough to prove soundness. *)
+Lemma Wpgen_sound_seq: forall (F1 F2: Formula) E t1 t2,
+  F1 ====> Wpsubst E t1 ->
+  F2 ====> Wpsubst E t2 ->
+  Wpgen_seq F1 F2 ====> Wpsubst E (trm_seq t1 t2).
+Proof.
+  introv M1 M2; intros A EA. applys qimpl_Wp_of_Triple; intros Q. remove_MkStruct.
+  apply Triple_hexists; intros Q1.
+  rewrite hstar_comm; apply Triple_hpure; intros M3.
+  simpl. applys Triple_seq.
+  { rewrite Triple_eq_himpl_Wp. applys M1. }
+  { rewrite Triple_eq_himpl_Wp. xchange M3. applys M2. }
 Qed.
 
 Lemma Wpgen_sound_let : forall (F1:Formula) (F2of:forall `{EA1:Enc A1},A1->Formula) E (x:var) t1 t2,
@@ -914,7 +930,8 @@ Proof using.
   { applys~ Wpgen_sound_constr. }
   { applys* Wpgen_sound_if. }
   { destruct b as [|x].
-    { applys* Wpgen_sound_seq_cont. }
+    (* { applys* Wpgen_sound_seq_cont. } *)
+    { applys* Wpgen_sound_seq. }
     { applys* Wpgen_sound_let. } }
   { applys* Wpgen_sound_apps. }
   { applys* Wpgen_sound_while. }
