@@ -358,9 +358,9 @@ Definition Wpgen_let_trm_cont (F1:Formula) A1 {EA1:Enc A1} (F2of:A1->Formula) : 
   MkStruct (fun A (EA:Enc A) Q =>
     ^F1 (fun (X:A1) => ^(F2of X) Q)).
 
-Definition Wpgen_seq_cont (F1 F2:Formula) : Formula :=
-  MkStruct (fun A (EA:Enc A) Q =>
-    ^F1 (fun (X:unit) => ^F2 Q)).
+(* Definition Wpgen_seq_cont (F1 F2:Formula) : Formula := *)
+(*   MkStruct (fun A (EA:Enc A) Q => *)
+(*     ^F1 (fun (X:unit) => ^F2 Q)). *)
 
 Definition Wpgen_val_unlifted (v:val) : Formula :=
   MkStruct (fun A (EA:Enc A) Q => Post Q v).
@@ -420,14 +420,14 @@ Definition Wpaux_if_trm (F0 F1 F2:Formula) : Formula :=
 Definition Wpgen_while (F1 F2:Formula) : Formula :=
   MkStruct (Wptag (FormulaCast (fun (Q:unit->hprop) =>
     \forall (R:Formula),
-    let F := Wpaux_if_trm F1 (Wpgen_seq_cont F2 R) (Wpgen_val_unlifted val_unit) in
+    let F := Wpaux_if_trm F1 (Wpgen_seq F2 R) (Wpgen_val_unlifted val_unit) in
     \[ structural (@R unit _) /\ (forall (Q':unit->hprop), ^F Q' ==> ^R Q')] \-* (^R Q)))).
     (* --TODO: use a lifted version of structural *)
 
 Definition Wpgen_for_int (n1 n2:int) (F1:int->Formula) : Formula :=
   MkStruct (FormulaCast (fun (Q:unit->hprop) =>
     \forall (S:int->Formula),
-    let F i := If (i <= n2) then (Wptag (Wpgen_seq_cont (F1 i) (S (i+1))))
+    let F i := If (i <= n2) then (Wptag (Wpgen_seq (F1 i) (S (i+1))))
                             else (Wptag (Wpgen_val_unlifted val_unit)) in
     \[   (forall i, structural (S i unit _))
       /\ (forall i (Q':unit->hprop), ^(F i) Q' ==> ^(S i) Q')] \-* (^(S n1) Q))).
@@ -436,7 +436,7 @@ Definition Wpgen_for_int (n1 n2:int) (F1:int->Formula) : Formula :=
 Definition Wpgen_for_downto_int (n1 n2:int) (F1:int->Formula) : Formula :=
   MkStruct (FormulaCast (fun (Q:unit->hprop) =>
     \forall (S:int->Formula),
-    let F i := If (i >= n2) then (Wptag (Wpgen_seq_cont (F1 i) (S (i-1))))
+    let F i := If (i >= n2) then (Wptag (Wpgen_seq (F1 i) (S (i-1))))
                             else (Wptag (Wpgen_val_unlifted val_unit)) in
     \[   (forall i, structural (S i unit _))
       /\ (forall i (Q':unit->hprop), ^(F i) Q' ==> ^(S i) Q')] \-* (^(S n1) Q))).
@@ -478,7 +478,6 @@ Fixpoint Wpgen (E:ctx) (t:trm) : Formula :=
        Wptag (Wpgen_if b0 (aux t1) (aux t2)))
   | trm_let z t1 t2 =>
      match z with
-     (* | bind_anon => Wptag (Wpgen_seq_cont (aux t1) (aux t2)) *)
      | bind_anon => Wptag (Wpgen_seq (aux t1) (aux t2))
      | bind_var x => Wptag (Wpgen_let (aux t1) (fun A (EA:Enc A) (X:A) =>
                          Wpgen (Ctx.add x (enc X) E) t2))
@@ -678,16 +677,16 @@ Proof using.
   remove_MkStruct. apply Triple_of_Wp. case_if. { applys M1. } { applys M2. }
 Qed.
 
-Lemma Wpgen_sound_seq_cont : forall (F1 F2:Formula) E t1 t2,
-  F1 ====> Wpsubst E t1 ->
-  F2 ====> Wpsubst E t2 ->
-  Wpgen_seq_cont F1 F2 ====> Wpsubst E (trm_seq t1 t2).
-Proof using.
-  introv M1 M2. intros A EA. applys qimpl_Wp_of_Triple. intros Q.
-  remove_MkStruct. simpl. applys Triple_seq.
-  { rewrite Triple_eq_himpl_Wp. applys* M1. }
-  { rewrite Triple_eq_himpl_Wp. applys* M2. }
-Qed.
+(* Lemma Wpgen_sound_seq_cont : forall (F1 F2:Formula) E t1 t2, *)
+(*   F1 ====> Wpsubst E t1 -> *)
+(*   F2 ====> Wpsubst E t2 -> *)
+(*   Wpgen_seq_cont F1 F2 ====> Wpsubst E (trm_seq t1 t2). *)
+(* Proof using. *)
+(*   introv M1 M2. intros A EA. applys qimpl_Wp_of_Triple. intros Q. *)
+(*   remove_MkStruct. simpl. applys Triple_seq. *)
+(*   { rewrite Triple_eq_himpl_Wp. applys* M1. } *)
+(*   { rewrite Triple_eq_himpl_Wp. applys* M2. } *)
+(* Qed. *)
 
 (** Note: [Wpgen_seq_cont] is stronger than [Wpgen_seq], but [Wpgen_seq] is
     strong enough to prove soundness. *)
@@ -829,7 +828,7 @@ Proof using.
          trm_if (isubst E t1) (trm_seq (isubst E t2) (trm_while (isubst E t1) (isubst E t2))) val_unit
        = isubst E (trm_if t1 (trm_seq t2 (trm_while t1 t2)) val_unit)).
       rewrite Triple_eq_himpl_Wp. applys~ Wpgen_sound_if_trm.
-      { applys~ Wpgen_sound_seq_cont. }
+      { applys~ Wpgen_sound_seq. }
       { intros A1 EA1 Q''. applys Wpgen_sound_val. } } }
   { rewrite~ @Triple_eq_himpl_Wp. }
 Qed.
@@ -853,7 +852,7 @@ Proof using. Opaque Ctx.add Ctx.rem.
         asserts_rewrite (trm_seq (isubst (Ctx.add x (``i) E) t1) (trm_for x (i + 1)%I n2 (isubst (Ctx.rem x E) t1))
           = (isubst (Ctx.add x (``i) E) (trm_seq t1 (trm_for x (i + 1)%I n2 t1)))).
         { simpl. rewrite Ctx.rem_anon, Ctx.rem_add_same. auto. }
-        applys Wpgen_sound_seq_cont.
+        applys Wpgen_sound_seq.
         { applys* M. }
         { unfold S. unfold Wpsubst. simpl. rewrite~ Ctx.rem_add_same. } }
       { applys Wpgen_sound_val E. } } }
@@ -930,7 +929,6 @@ Proof using.
   { applys~ Wpgen_sound_constr. }
   { applys* Wpgen_sound_if. }
   { destruct b as [|x].
-    (* { applys* Wpgen_sound_seq_cont. } *)
     { applys* Wpgen_sound_seq. }
     { applys* Wpgen_sound_let. } }
   { applys* Wpgen_sound_apps. }
