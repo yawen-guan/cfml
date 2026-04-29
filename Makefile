@@ -187,7 +187,7 @@ else
 	 		else
         # DEPRECATED?
         $(info gathering local ml files)
-    	  ML := $(wildcard $(FOLDER)/*.ml)
+		ML := $(wildcard $(FOLDER)/*.ml)
 			endif
    #endif
 endif
@@ -456,12 +456,12 @@ SED := $(shell if command -v gsed >/dev/null ; then echo gsed ; else echo sed ; 
 
 .depend_lib: $(LIBCOQ_V)
 	@echo "Computing $@"
-	$(COQDEP) $(COQINCLUDE) $(LIBCOQ_V) > $@
+	$(COQDEP) $(COQINCLUDE) $(COQEXTRAFLAGS) $(LIBCOQ_V) > $@
 
 # Beware that 'make depend' needs to be redone if changing Coq files
 .depend_v:
 	@echo "Computing $@"
-	$(COQDEP) $(COQINCLUDE) $(V) > $@
+	$(COQDEP) $(COQINCLUDE) $(COQEXTRAFLAGS) $(V) > $@
 
 # Hardcoded constraints for $(STDLIBMAIN)
 
